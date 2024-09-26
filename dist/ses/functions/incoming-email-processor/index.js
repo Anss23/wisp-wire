@@ -1,0 +1,1 @@
+(()=>{"use strict";var e,o={};e=o,Object.defineProperty(e,"__esModule",{value:!0}),e.handler=void 0,e.handler=async(e,o)=>{console.log("Received event:",JSON.stringify(e))},module.exports=o})();

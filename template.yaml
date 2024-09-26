@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Parent template for WispWire
+
+Parameters:
+  Env:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The deployment environment for the application.
+  EmailRetentionPeriodInDays:
+    Type: Number
+    Default: 1
+    Description: Number of days to retain emails before deletion
+
+Resources:
+  ApiStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./api-template.yaml
+      Parameters:
+        Env: !Ref Env
+
+  SesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./ses-template.yaml
+      Parameters:
+        Env: !Ref Env
+        EmailRetentionPeriodInDays: !Ref EmailRetentionPeriodInDays
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL for WispWire"
+    Value: !GetAtt ApiStack.Outputs.ApiEndpoint
+  EmailBucketName:
+    Description: "Name of the S3 bucket storing emails"
+    Value: !GetAtt SesStack.Outputs.EmailBucketName
+  EmailProcessingLambdaArn:
+    Description: "ARN of the Lambda function processing emails"
+    Value: !GetAtt SesStack.Outputs.EmailProcessingLambdaArn

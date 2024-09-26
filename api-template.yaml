@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Child template for WispWire API lambdalith
+
+Parameters:
+  Env:
+    Type: String
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 128
+    Architectures:
+      - arm64
+    Timeout: 300
+    Environment:
+      Variables:
+        REGION: !Ref AWS::Region
+        ACCOUNTID: !Ref AWS::AccountId
+        ENV: !Ref Env
+
+Resources:
+  WispWireTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "WispWire-${Env}"
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: sortKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: sortKey
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  WispWireLambdalith:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/rest-api/functions/api-lambdalith
+      Handler: app.handler
+      Environment:
+        Variables:
+          DDB_TABLE: !Ref WispWireTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WispWireTable
+      Events:
+        ApiEventRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref WispWireApi
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref WispWireApi
+
+  WispWireLambdalithLiveAlias:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties: 
+      FunctionName: !Ref WispWireLambdalith
+
+  WispWireApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Env
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      EndpointConfiguration: 
+        Type: REGIONAL
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL for WispWire"
+    Value: !Sub "https://${WispWireApi}.execute-api.${AWS::Region}.amazonaws.com/${Env}/"

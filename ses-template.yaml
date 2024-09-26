@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Nested stack for SES configuration
+
+Parameters:
+  Env:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The deployment environment for the application.
+  EmailRetentionPeriodInDays:
+    Type: Number
+    Description: Number of days to retain emails before deletion
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 128
+    Architectures:
+      - arm64
+    Timeout: 300
+    Environment:
+      Variables:
+        REGION: !Ref AWS::Region
+        ACCOUNTID: !Ref AWS::AccountId
+        ENV: !Ref Env
+
+Resources:
+  EmailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "wispwire-emails-${Env}"
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldEmails
+            Status: Enabled
+            ExpirationInDays: !Ref EmailRetentionPeriodInDays
+            Prefix: "public/incoming-emails/"
+
+  EmailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EmailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowSESPuts
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: 
+            - s3:PutObject
+            - s3:PutObjectAcl
+            Resource: !Sub "${EmailBucket.Arn}/public/incoming-emails/*"
+            Condition:
+              StringEquals:
+                'aws:Referer': !Ref AWS::AccountId
+
+  EmailReceivingRule:
+    Type: AWS::SES::ReceiptRule
+    Properties:
+      RuleSetName: !Ref EmailReceivingRuleSet
+      Rule:
+        Name: !Sub "CatchAllRule-${Env}"
+        Enabled: true
+        Recipients: 
+          - !Sub "wispwire.com" 
+        Actions:
+          - S3Action:
+              BucketName: !Ref EmailBucket
+              ObjectKeyPrefix: "public/incoming-emails/"
+
+  EmailReceivingRuleSet:
+    Type: AWS::SES::ReceiptRuleSet
+    DependsOn: 
+      - EmailBucketPolicy
+    Properties:
+      RuleSetName: !Sub "WispWireRuleSet-${Env}"
+
+  EmailProcessingLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/ses/functions/incoming-email-processor
+      Handler: index.handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref EmailBucket
+      Events:
+        EmailReceived:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - aws.s3
+              detail-type:
+                - Object Created
+              detail:
+                bucket:
+                  name:
+                    - !Ref EmailBucket
+                object:
+                  key:
+                    - prefix: "public/incoming-emails/"
+
+Outputs:
+  EmailBucketName:
+    Description: "Name of the S3 bucket storing emails"
+    Value: !Ref EmailBucket
+  EmailProcessingLambdaArn:
+    Description: "ARN of the Lambda function processing emails"
+    Value: !GetAtt EmailProcessingLambda.Arn

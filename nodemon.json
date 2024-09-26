@@ -1,0 +1,6 @@
+{
+  "watch": ["src", "dist", "template.yaml", "api-template.yaml"],
+  "ext": "js,json,ts,yaml,yml",
+  "ignore": ["src/**/*.spec.ts"],
+  "exec": "npm run build && sam local start-api -n env.json --docker-network host"
+}
