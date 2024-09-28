@@ -7,7 +7,24 @@ const Inbox = () => {
     const [menuState, setMenuState] = useState([
         {value:"test1@wispwire.com"}, 
         {value:"test2@wispwire.com"}, 
-        {value:"test3@wispwire.com"}
+        {value:"test3@wispwire.com"},
+        {value:"test4@wispwire.com"},
+        {value:"test5@wispwire.com"},
+        {value:"test6@wispwire.com"},
+        {value:"test7@wispwire.com"},
+        {value:"test8@wispwire.com"},
+        {value:"test9@wispwire.com"},
+        {value:"test10@wispwire.com"},
+        {value:"test11@wispwire.com"},
+        {value:"test12@wispwire.com"},
+        {value:"test13@wispwire.com"},
+        {value:"test14@wispwire.com"},
+        {value:"test15@wispwire.com"},
+        {value:"test16@wispwire.com"},
+        {value:"test17@wispwire.com"},
+        {value:"test18@wispwire.com"},
+        {value:"test19@wispwire.com"},
+        {value:"test20@wispwire.com"},
     ]);
 
     const [selectedEmail, setSelectedEmail] = useState("");
@@ -49,7 +66,7 @@ const Inbox = () => {
             </div>
             
             <div className="inbox-flex-container">
-                <div className="inbox-side-menu">
+                <div className="inbox-side-menu" style={{overflowY: 'auto', maxHeight: 'calc(100vh - 150px)'}}>
                     <SideMenu menuItems={menuState} selectedItem={selectEmail}/>
                 </div>
                

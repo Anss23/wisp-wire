@@ -14,7 +14,7 @@ export const getApple = async (req: Request, res: Response) => {
 
 export const createItem = async (req: Request, res: Response) => {
   try {
-    //sawait chatMessageService.createItem(req.body);
+    //await chatMessageService.createItem(req.body);
     res.status(201).json({ message: 'Item created successfully' });
   } catch (error) {
     console.error(error);
